@@ -1,0 +1,268 @@
+1. Average Review Ratings
+
+Given the reviews table, write a query to retrieve the average star rating for each product, grouped by month. The output should display the month as a numerical value, product ID and average star rating rounded to two decimal places. Sort the output first by month and then by product ID.
+reviews Table:
+Column Name  Type
+review id   integer
+user id     integer
+submit_date datetime
+product id  integer
+stars       Integer (1-5)
+
+reviews Example Input:
+review id  user id  submit date           product id   stars
+6171        123      06/08/2022 00:00:00   50001        4
+7802        265      06/10/2022 00:00:00   69852        4
+5293        362      06/18/2022 00:00:00   50001        3
+6352        192      07/26/2022 00:00:00   69852        3
+4517        981      07/05/2022 00:00:00   69852        2
+
+Example Output:
+mth  product   avg_stars
+ 6     50001     3.50
+ 6     69852     4.00
+ 7     69852     2.50
+
+Explanation
+Product 50001 received two ratings of 4 and 3 in the month of June (6th month), resulting in an average star rating of 3.5.
+The dataset you are querying against may have different input & output.
+
+Solution-
+
+SELECT 
+    EXTRACT(MONTH FROM STR_TO_DATE(submit_date, '%m/%d/%Y %H:%i:%s')) AS mth,
+    product_id AS product,
+    ROUND(AVG(stars), 2) AS avg_stars
+FROM 
+    reviews
+GROUP BY 
+    mth,
+    product_id
+ORDER BY 
+    mth,
+    product_id;
+
+2. Article Views I
+
+Write an SQL query to find all the authors that viewed at least one of their own articles. Return the result table sorted by id in ascending order.
+Input:
+Views table:
+| article_id |author_id |viewer_id |view_date |
+11             13          15       2019-08-01
+12             17          17       2019-08-02
+12             17          16       2019-08-01
+
+Table: Views
+There is no primary key for this table, it may have duplicate rows
+Each row of this table indicates that some viewer viewed an article (written by some author) on some date.
+Note that equal author_id and viewer id indicate the same person.
+
+Output:
+id
+14
+17
+
+Solution-
+
+SELECT DISTINCT author_id AS id
+FROM Views
+WHERE author_id = viewer_id
+ORDER BY id ASC;
+
+3. Sales Analysis II
+
+Write an SQL query that reports the buyers who have bought S8 but not iPhone. Note that S8 and iPhone are products present in the Product table. Return the result table in any order.
+
+Input:
+Product table:
+product id  praduct name  unit price
+11            S8           1000
+12            G4           800
+13            iPhone       1400
+
+Sales table:
+seller_id product id  buyer_id sale_date  quantity  price
+
+Table: Product
+product_id is the primary key of this table.
+Each row of this table indicates the name and the price of each product
+
+Table: Sales
+This table has no primary key, it can have repeated rows
+Output:
+| buyer_id
+     1
+Explanation:
+The buyer with id 1 bought an S8 but did not buy an iPhone. The buyer with id 3 bought both.
+
+Solution-
+
+SELECT DISTINCT buyer_id
+FROM Sales
+WHERE product_id = (SELECT product_id FROM Product WHERE product_name = 'S8')
+AND buyer_id NOT IN (
+    SELECT buyer_id
+    FROM Sales
+    WHERE product_id = (SELECT product_id FROM Product WHERE product_name = 'iPhone')
+);
+
+4. Sales Insights I
+
+Table: Product
+ Type                  | Column Name |
+ int                     | product_id |
+  varchar                     | product_name |
+
+product_id is the primary key of this table.
+Table: Sales
+
+This table has no primary key, it can have repea
+product_id is a foreign key to Product table.
+Write an SQL query that reports the best seller by total sales price, If there is a tie, report them all.
+The query result format is in the following example:
+Output:
+seller_id
+1
+3
+
+Solution- 
+
+SELECT seller_id
+FROM Sales
+GROUP BY seller_id
+HAVING SUM(price) = (
+    SELECT SUM(price) AS total_sales
+    FROM Sales
+    GROUP BY seller_id
+    ORDER BY total_sales DESC
+    LIMIT 1
+);
+
+5. Tweets' Rolling Averages
+
+Given a table of tweet data over a specified time period, calculate the 3-day rolling average of tweets for each user. Output the user ID, tweet date, and rolling averages rounded to 2 decimal places.
+Notes:
+• A rolling average, also known as a moving average or running mean is a time-series technique that examines trends in data over a specified period of time.
+In this case, we want to determine how the tweet count for each user changes over a 3-day period.
+tweets Table:
+Column Name
+Type
+user id
+integer
+tweet date
+timestamp
+tweet_count
+integer
+tweets Example Input:
+user_id
+tweet date
+tweet count
+
+Solution-
+
+SELECT 
+    user_id,
+    tweet_date,
+    ROUND(
+        AVG(tweet_count) OVER (
+            PARTITION BY user_id 
+            ORDER BY tweet_date 
+            ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+        ), 
+    2) AS rolling_avg_3d
+FROM 
+    tweets
+ORDER BY 
+    user_id, 
+    tweet_date;
+
+6. Locate Customer Referrals
+
+Table Customer
+Type
+Column Name
+| id
+| int
+I name
+| varchar |
+referee_id
+int
+In SQL, id is the primary key column for this table
+Each row of this table indicates the id of a customer their name, and the id of the customer who referred them.
+Find the names of the customer that are not referred by the customer with id = 2.
+Return the result table in any order.
+The result format is in the following example.
+
+Solution
+
+SELECT name
+FROM Customer
+WHERE referee_id != 2 OR referee_id IS NULL;
+
+7. Uber User's Third Transaction
+
+Assume you are given the table below on Uber transactions made by users. Write a query to obtain the third transaction of every user. Output the user id, spend and transaction date
+transactions Table:
+Ip
+Column Name
+Type
+user_id
+integer
+spend
+decimal
+transaction_date
+timestamp
+transactions Example Input:
+user id
+spend
+transaction date
+111
+100.50
+01/08/2022 12:00:00
+111
+55.00
+01/10/2022 12:00:00
+121
+36.00
+01/18/2022 12:00:00
+145
+24.99
+01/26/2022 12:00:00
+111
+89.60
+02/05/2022 12:00:00
+
+Solution-
+
+SELECT user_id, spend, transaction_date
+FROM (
+    SELECT *,
+           ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY transaction_date) AS transaction_rank
+    FROM transactions
+) ranked_transactions
+WHERE transaction_rank = 3;
+
+8. Not Boring Movies
+
+Table: Cinema
+| Type
+| Column Name
+| int
+| id
+I varchar |
+| movie
+| description
+| varchar |
+| rating
+| float
+id is the primary key (column with unique values Each row contains information about the name of rating is a 2 decimal places float in the range
+Write a solution to report the movies with an odd- numbered ID and a description that is not "boring".
+Return the result table ordered by rating in descending order.
+The result format is in the following example.
+
+Solution-
+
+SELECT id, movie, description, rating
+FROM Cinema
+WHERE id % 2 <> 0 AND description <> 'boring'
+ORDER BY rating DESC;
